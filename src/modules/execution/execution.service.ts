@@ -16,6 +16,7 @@ import * as haversine from 'haversine-distance';
 import { ExecutionProcessor } from '../ai-report/processor/execution.processor';
 import { FindSalesReportDto } from './dto/find-sales-report.dto';
 import { startAndEndOfDate } from 'src/utils/utils';
+import { OutletFilterDto } from '../outlet/dto/outlet-filter.dto';
 
 @Injectable()
 export class ExecutionService {
@@ -198,6 +199,79 @@ export class ExecutionService {
     return {
       data,
       meta: { ...meta, limit, page },
+    };
+  }
+
+  async memoByExecution(dto: OutletFilterDto, user: IUser) {
+    let towns = await this.townModel.aggregate([
+      { $match: { _id: { $in: user.town.map((id) => id) }, deletedAt: null } },
+      {
+        $project: {
+          _id: 0,
+          label: '$name',
+          value: '$_id',
+        },
+      },
+    ]);
+    let routes = await this.outletModel.aggregate([
+      {
+        $match: {
+          deletedAt: null,
+          'town.id': {
+            $in: user.town,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            townId: '$town.id',
+            routeName: '$route.name',
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          townId: '$_id.townId',
+          label: '$_id.routeName',
+          value: '$_id.routeName',
+        },
+      },
+      { $sort: { label: 1 } },
+    ]);
+    let executions = [];
+    if (dto.townId && dto.route) {
+      let outletFilter = {};
+      if (dto.outletcode) {
+        outletFilter['outlet.outletcode'] = dto.outletcode;
+      }
+      executions = await this.executionModel.aggregate([
+        {
+          $match: {
+            deletedAt: null,
+            'town.id': new Types.ObjectId(dto.townId),
+            'outlet.route': dto.route,
+            ...outletFilter,
+          },
+        },
+        {
+          $project: {
+            outlet: 1,
+            createdAt: 1,
+            totalOrderedAmount: 1,
+            orderItems: 1,
+          },
+        },
+      ]);
+    }
+
+    return {
+      data: {
+        towns,
+        routes,
+        executions,
+      },
     };
   }
 }

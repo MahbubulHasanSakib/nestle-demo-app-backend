@@ -1,12 +1,9 @@
 import {
   Body,
   Controller,
-  Get,
-  Param,
   Post,
   UseGuards,
   UseInterceptors,
-  Version,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ResponseInterceptor } from 'src/utils/response.interceptor';
@@ -15,10 +12,7 @@ import { ExecutionService } from './execution.service';
 import { User } from '../user/user.decorator';
 import { IUser } from '../user/interfaces/user.interface';
 import { AuthGuard } from '../auth/auth.guard';
-import { GetVisitCallReportDto } from './dto/get-visit-call-report.dto';
-import { Permissions } from '../auth/permissions.decorator';
-import { PermissionType } from '../auth/interface/permission.type';
-import { PermissionsGuard } from '../auth/permissions.guard';
+import { FindSalesReportDto } from './dto/find-sales-report.dto';
 import { OutletFilterDto } from '../outlet/dto/outlet-filter.dto';
 
 @ApiTags('execution')
@@ -34,6 +28,10 @@ export class ExecutionController {
     return this.executionService.create(createExecutionDto, user);
   }
 
+  @Post('sales-report')
+  findSalesReport(@Body() query: FindSalesReportDto) {
+    return this.executionService.findSalesReport(query);
+  }
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
   @Post('memo-by-execution')

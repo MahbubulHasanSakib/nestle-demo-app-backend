@@ -1,36 +1,21 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Execution } from './schema/execution.schema';
 import { CreateExecutionDto } from './dto/create-execution.dto';
-import mongoose, { Model, Types } from 'mongoose';
+import mongoose, { Model, PipelineStage, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { IUser } from '../user/interfaces/user.interface';
-import { ImageKind } from './interface/image-kind.type';
-import { JobType } from './interface/job.type';
-import { ExecutionCallType } from './interface/execution-call.type';
 import { Attendance } from '../attendance/schema/attendance.schema';
-import {
-  getItemType,
-  startAndEndBetweenSixDays,
-  startAndEndOfDate,
-  weekOfMonth,
-} from 'src/utils/utils';
 import { Queue } from 'bull';
 import { InjectQueue } from '@nestjs/bull';
-import { UserType } from '../user/interfaces/user.type';
-import { GetVisitCallReportDto } from './dto/get-visit-call-report.dto';
 import { Town } from '../data-management/town/schema/town.schema';
 import { Outlet } from '../outlet/schema/outlet.schema';
-import { StatusType } from './interface/status.type';
 import * as dayjs from 'dayjs';
 import { dataManagementFilter } from 'src/utils/data-management-filter';
-import { ObjectId } from 'mongodb';
 import { Material } from '../material/schema/material.schema';
 import * as haversine from 'haversine-distance';
 import { ExecutionProcessor } from '../ai-report/processor/execution.processor';
+import { FindSalesReportDto } from './dto/find-sales-report.dto';
+import { startAndEndOfDate } from 'src/utils/utils';
 import { OutletFilterDto } from '../outlet/dto/outlet-filter.dto';
 
 @Injectable()
@@ -86,6 +71,134 @@ export class ExecutionService {
     );
     return {
       data: execution,
+    };
+  }
+
+  async findSalesReport(query: FindSalesReportDto) {
+    const {
+      regionId,
+      areaId,
+      territoryId,
+      townId,
+      userId,
+      orderStatus,
+      deliveryStatus,
+      searchTerm,
+      page: pageNo,
+      limit: pageLimit,
+      from,
+      to,
+    } = query;
+
+    const page = Number(pageNo) > 0 ? Number(pageNo) : 1;
+    const limit = Number(pageLimit) > 0 ? Number(pageLimit) : 20;
+    const skip = (page - 1) * pageLimit;
+
+    let townQuery: any = {};
+    const filter: any = {};
+
+    const { startOfToday, endOfToday } = startAndEndOfDate(new Date());
+    let dayQuery: any = {
+      createdAt: { $gte: startOfToday, $lte: endOfToday },
+    };
+
+    if (
+      regionId?.length > 0 ||
+      areaId?.length > 0 ||
+      territoryId?.length > 0 ||
+      townId?.length > 0
+    ) {
+      townQuery = dataManagementFilter(regionId, areaId, territoryId, townId);
+      const result = await this.townModel.aggregate([
+        { $match: townQuery },
+        {
+          $group: {
+            _id: null,
+            town: { $push: '$_id' },
+          },
+        },
+      ]);
+
+      if (result[0]?.town) {
+        townQuery = { townId: { $in: result[0]?.town } };
+      }
+    }
+
+    if (userId?.length > 0)
+      filter['user.id'] = { $in: userId.map((v) => new Types.ObjectId(v)) };
+    // if (orderStatus) filter['orderStatus'] = orderStatus;
+    if (deliveryStatus) filter['paymentMethod'] = deliveryStatus;
+
+    if (searchTerm) {
+      filter['$or'] = [
+        { 'outlet.name': { $regex: searchTerm, $options: 'i' } },
+        { 'outlet.code': { $regex: searchTerm, $options: 'i' } },
+      ];
+    }
+
+    if (from) {
+      const { startOfToday: startDate } = startAndEndOfDate(from);
+      dayQuery = {
+        createdAt: {
+          ...dayQuery.createdAt,
+          $gte: startDate,
+        },
+      };
+    }
+
+    if (to) {
+      const { endOfToday: endDate } = startAndEndOfDate(to);
+      dayQuery = {
+        createdAt: {
+          ...dayQuery.createdAt,
+          $lte: endDate,
+        },
+      };
+    }
+
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          ...filter,
+          ...townQuery,
+          ...dayQuery,
+        },
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $facet: {
+          data: [
+            {
+              $skip: skip,
+            },
+            {
+              $limit: limit,
+            },
+          ],
+          meta: [
+            {
+              $count: 'total',
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: '$meta',
+        },
+      },
+    ];
+
+    const [{ data = [], meta = {} } = {}] =
+      await this.executionModel.aggregate(pipeline);
+
+    return {
+      data,
+      meta: { ...meta, limit, page },
     };
   }
 

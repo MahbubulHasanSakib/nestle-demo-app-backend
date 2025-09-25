@@ -10,9 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ResponseInterceptor } from 'src/utils/response.interceptor';
-import {
-  CreateExecutionDto,
-} from './dto/create-execution.dto';
+import { CreateExecutionDto } from './dto/create-execution.dto';
 import { ExecutionService } from './execution.service';
 import { User } from '../user/user.decorator';
 import { IUser } from '../user/interfaces/user.interface';
@@ -21,6 +19,7 @@ import { GetVisitCallReportDto } from './dto/get-visit-call-report.dto';
 import { Permissions } from '../auth/permissions.decorator';
 import { PermissionType } from '../auth/interface/permission.type';
 import { PermissionsGuard } from '../auth/permissions.guard';
+import { OutletFilterDto } from '../outlet/dto/outlet-filter.dto';
 
 @ApiTags('execution')
 @UseInterceptors(ResponseInterceptor)
@@ -35,4 +34,13 @@ export class ExecutionController {
     return this.executionService.create(createExecutionDto, user);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Post('memo-by-execution')
+  memoByExecution(
+    @Body() outletFilterDto: OutletFilterDto,
+    @User() user: IUser,
+  ) {
+    return this.executionService.memoByExecution(outletFilterDto, user);
+  }
 }

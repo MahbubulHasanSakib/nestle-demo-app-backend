@@ -37,8 +37,8 @@ export class OutletController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
-  @Post('outlet-list')
-  outletList(@Body() outletFilterDto: OutletFilterDto, @User() user: IUser) {
+  @Get('outlet-list')
+  outletList(@Query() outletFilterDto: OutletFilterDto, @User() user: IUser) {
     return this.service.outletList(outletFilterDto, user);
   }
 

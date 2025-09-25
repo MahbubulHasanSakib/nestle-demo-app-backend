@@ -28,4 +28,11 @@ import { PermissionsGuard } from '../auth/permissions.guard';
 @Controller({ path: 'summary', version: Constants.API_VERSION_1 })
 export class SummaryController {
   constructor(private readonly service: SummaryService) {}
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Get('/cm-app-dashboard')
+  async cmAppDashboard(@User() user: IUser) {
+    return this.service.cmAppDashboard(user);
+  }
 }

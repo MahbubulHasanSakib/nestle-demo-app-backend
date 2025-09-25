@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Post,
+  Query,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -36,7 +37,7 @@ export class ExecutionController {
   @UseGuards(AuthGuard)
   @Post('memo-by-execution')
   memoByExecution(
-    @Body() outletFilterDto: OutletFilterDto,
+    @Query() outletFilterDto: OutletFilterDto,
     @User() user: IUser,
   ) {
     return this.executionService.memoByExecution(outletFilterDto, user);

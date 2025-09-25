@@ -11,9 +11,13 @@ import {
   UserSummary,
   UserSummarySchema,
 } from './schema/summary.schema';
+import { OutletModule } from '../outlet/outlet.module';
+import { ExecutionModule } from '../execution/execution.module';
 
 @Module({
   imports: [
+    OutletModule,
+    ExecutionModule,
     MongooseModule.forFeature([
       {
         name: Summary.name,
@@ -31,7 +35,6 @@ import {
           },
         ],
       },
-    
     ]),
   ],
   controllers: [SummaryController],

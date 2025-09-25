@@ -35,6 +35,7 @@ import * as isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import * as isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { MsUser } from '../user/schemas/ms-user.schema';
 import { Cron } from '@nestjs/schedule';
+import { Outlet } from '../outlet/schema/outlet.schema';
 
 dayjs.extend(localeData);
 
@@ -50,5 +51,109 @@ type Role = 'territoryManager' | 'areaManager' | 'shopperMarketingManager';
 type DateRange = { startDay: dayjs.Dayjs; endDay: dayjs.Dayjs };
 @Injectable()
 export class SummaryService {
-  constructor() {}
+  constructor(
+    @InjectModel(Town.name) private readonly townModel: Model<Town>,
+    @InjectModel(Outlet.name) private readonly outletModel: Model<Outlet>,
+    @InjectModel(Execution.name)
+    private readonly executionModel: Model<Execution>,
+  ) {}
+
+  async cmAppDashboard(user: IUser) {
+    const { startOfToday, endOfToday, startOfMonth, endOfMonth } =
+      startAndEndOfDate();
+    let routes = await this.outletModel.aggregate([
+      {
+        $match: {
+          deletedAt: null,
+          'town.id': {
+            $in: user.town,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$route.routecode',
+        },
+      },
+    ]);
+
+    let totalSalesToday = await this.executionModel.aggregate([
+      {
+        $match: {
+          'town.id': { $in: user.town },
+          executionEndAt: {
+            $gte: startOfToday,
+            $lte: endOfToday,
+          },
+          'user.id': new Types.ObjectId(user._id),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalOrderedAmount: { $sum: '$totalOrderedAmount' },
+        },
+      },
+    ]);
+
+    routes = routes.map(({ _id }) => _id);
+
+    let todayOutletTarget = 70;
+    let monthlySalesTarget = 300000;
+
+    let todayCoveredOutlet = await this.executionModel.aggregate([
+      {
+        $match: {
+          'town.id': { $in: user.town },
+          executionEndAt: {
+            $gte: startOfToday,
+            $lte: endOfToday,
+          },
+          'user.id': new Types.ObjectId(user._id),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          count: { $count: {} },
+        },
+      },
+    ]);
+
+    let monthlyAchievement = await this.executionModel.aggregate([
+      {
+        $match: {
+          'town.id': { $in: user.town },
+          executionEndAt: {
+            $gte: startOfMonth,
+            $lte: endOfMonth,
+          },
+          'user.id': new Types.ObjectId(user._id),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalOrderedAmount: { $sum: '$totalOrderedAmount' },
+        },
+      },
+    ]);
+
+    return {
+      data: {
+        routes,
+        totalSalesToday: totalSalesToday[0]?.totalOrderedAmount || 0,
+        todayOutletTarget,
+        todayCoveredOutlet: todayCoveredOutlet[0]?.count || 0,
+        monthlySalesTarget,
+        monthlyAchievement: monthlyAchievement[0]?.totalOrderedAmount || 0,
+        monthlyAchievementPercent: monthlyAchievement[0]
+          ? Math.round(
+              (monthlyAchievement[0].totalOrderedAmount / monthlySalesTarget) *
+                100,
+            )
+          : 0,
+      },
+    };
+  }
 }

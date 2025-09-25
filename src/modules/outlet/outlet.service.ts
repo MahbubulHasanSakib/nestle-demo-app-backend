@@ -217,6 +217,7 @@ export class OutletService {
             lastVisitedAt: { $ifNull: ['$lastVisitedAt', null] },
             lastOrderAmount: { $ifNull: ['$lastOrderAmount', null] },
             lastOrderedDelivered: { $ifNull: ['$lastOrderDelivered', null] },
+            lastOrderId: { $ifNull: ['$lastOrderId', null] },
           },
         },
       ]);

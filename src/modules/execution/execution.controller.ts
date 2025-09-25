@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Post,
   Query,
   UseGuards,
@@ -35,7 +36,7 @@ export class ExecutionController {
   }
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
-  @Post('memo-by-execution')
+  @Get('memo-by-execution')
   memoByExecution(
     @Query() outletFilterDto: OutletFilterDto,
     @User() user: IUser,

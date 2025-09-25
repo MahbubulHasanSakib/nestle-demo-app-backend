@@ -1,0 +1,9 @@
+export enum JobType {
+  DISPLAY_AUDIT = 'DA',
+  POSM_EXECUTION = 'POSM',
+  QPDS = 'QPDS',
+  FIXED_ASSET_TRACKING = 'FAT',
+  SOS = 'SOS',
+  MTSOS = 'MTSOS',
+  SACHET = 'SACHET',
+}

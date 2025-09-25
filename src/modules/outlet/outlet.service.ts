@@ -206,6 +206,36 @@ export class OutletService {
           },
         },
         {
+          $addFields: {
+            aiResult: [
+              {
+                name: 'Meril Vitamin C Soap Bar - Tangerine Orange',
+                detectedQty: 43,
+              },
+              {
+                name: 'Meril Baby Soap',
+                detectedQty: 37,
+              },
+              {
+                name: 'Meril Milk Soap Bar',
+                detectedQty: 32,
+              },
+              {
+                name: 'Meril Vitamin C Soap Bar - Lemon & Lime',
+                detectedQty: 48,
+              },
+              {
+                name: 'Meril Milk & Rose Soap Bar',
+                detectedQty: 23,
+              },
+              {
+                name: 'Meril Milk & Beli Soap Bar',
+                detectedQty: 41,
+              },
+            ],
+          },
+        },
+        {
           $project: {
             name: 1,
             town: 1,
@@ -218,6 +248,7 @@ export class OutletService {
             lastOrderAmount: { $ifNull: ['$lastOrderAmount', null] },
             lastOrderedDelivered: { $ifNull: ['$lastOrderDelivered', null] },
             lastOrderId: { $ifNull: ['$lastOrderId', null] },
+            aiResult: 1,
           },
         },
       ]);

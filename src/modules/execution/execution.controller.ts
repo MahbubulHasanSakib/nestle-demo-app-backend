@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -42,5 +44,10 @@ export class ExecutionController {
     @User() user: IUser,
   ) {
     return this.executionService.memoByExecution(outletFilterDto, user);
+  }
+
+  @Patch('deliver/:id')
+  updateDelivery(@Param('id') id: string) {
+    return this.executionService.deliverProduct(id);
   }
 }

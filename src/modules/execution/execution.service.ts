@@ -261,6 +261,8 @@ export class ExecutionService {
             createdAt: 1,
             totalOrderedAmount: 1,
             orderItems: 1,
+            exchangeItems: 1,
+            returnItems: 1,
           },
         },
       ]);
@@ -272,6 +274,23 @@ export class ExecutionService {
         routes,
         executions,
       },
+    };
+  }
+
+  async deliverProduct(id: string) {
+    const execution = await this.executionModel.findById(id);
+    if (!execution) {
+      throw new Error('Execution not found');
+    }
+    const updateExecution = await this.executionModel.findByIdAndUpdate(id, {
+      $set: { delivered: true },
+    });
+    if (!updateExecution) {
+      throw new Error('Error occurred while updating execution for delivery');
+    }
+    return {
+      data: updateExecution,
+      message: 'Sale marked as delivered successfully',
     };
   }
 }

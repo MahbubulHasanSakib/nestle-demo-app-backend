@@ -714,10 +714,10 @@ export class AuthService {
       ];
     } else {
       const { appVersion, loggedOn } = createUserSignInDto;
-      if (loggedOn !== LoggedOnType.WEB && !appVersion)
-        throw new BadRequestException(
-          `App version is required.Need to use latest app`,
-        );
+      // if (loggedOn !== LoggedOnType.WEB && !appVersion)
+      //   throw new BadRequestException(
+      //     `App version is required.Need to use latest app`,
+      //   );
 
       pipeline = [
         {

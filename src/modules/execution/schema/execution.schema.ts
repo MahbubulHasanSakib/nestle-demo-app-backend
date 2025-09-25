@@ -131,6 +131,27 @@ export class OrderItem {
 
 const OrderItemSchema = SchemaFactory.createForClass(OrderItem);
 
+@Schema({ _id: false })
+export class ExchangeORReturnItem {
+  @Prop({ type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Outlet' })
+  id: mongoose.Schema.Types.ObjectId;
+
+  @Prop({ required: true })
+  name: string;
+
+  @Prop({ required: false })
+  expireDate: Date;
+
+  @Prop({ required: true })
+  qty: number;
+
+  @Prop({ required: true })
+  price: number;
+}
+
+const ExchangeORReturnItemSchema =
+  SchemaFactory.createForClass(ExchangeORReturnItem);
+
 @Schema({ timestamps: true, versionKey: false })
 export class Execution {
   @Prop({ type: UserSchema, required: true })
@@ -160,6 +181,12 @@ export class Execution {
   @Prop({ type: [OrderItemSchema], required: true })
   orderItems: OrderItem[];
 
+  @Prop({ type: [ExchangeORReturnItemSchema], required: false })
+  exchangeItems: ExchangeORReturnItem[];
+
+  @Prop({ type: [ExchangeORReturnItemSchema], required: false })
+  returnItems: ExchangeORReturnItem[];
+
   @Prop({ required: true })
   totalOrderedAmount: number;
 
@@ -174,6 +201,12 @@ export class Execution {
 
   @Prop({ type: String, default: null, enum: PaymentMethod })
   paymentMethod: PaymentMethod;
+
+  @Prop({ type: String, required: false })
+  remarksForExchange: string;
+
+  @Prop({ type: String, required: false })
+  remarksForReturn: string;
 
   @Prop({ type: Boolean, default: false })
   delivered: boolean;

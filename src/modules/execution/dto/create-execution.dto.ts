@@ -114,6 +114,23 @@ class OrderItemDto {
   size: number;
 }
 
+class ExchangeOROrderItem {
+  @IsString()
+  id: string;
+
+  @IsString()
+  name: string;
+
+  @IsDate()
+  @IsOptional()
+  expireDate: Date;
+
+  @IsNumber()
+  qty: number;
+
+  @IsNumber()
+  price: number;
+}
 export class CreateExecutionDto {
   @ApiProperty({
     example: {
@@ -242,6 +259,54 @@ export class CreateExecutionDto {
   @Type(() => OrderItemDto)
   orderItems: OrderItemDto[];
 
+  @ApiProperty({
+    example: [
+      {
+        id: '68d3eed4afae12a98fb18e2a',
+        name: 'Meril Vitamin C Soap Bar – Tangerine Orange 100gm',
+        expireDate: '2025-09-23T12:00:00.000Z',
+        qty: 5,
+        price: 60,
+      },
+      {
+        id: '68d3eed4afae12a98fb18e2d',
+        name: 'Meril Vitamin C Soap Bar – Lemon & Lime 150gm',
+        expireDate: '2025-09-23T12:00:00.000Z',
+        qty: 5,
+        price: 60,
+      },
+    ],
+  })
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => ExchangeOROrderItem)
+  exchangeItems: ExchangeOROrderItem[];
+
+  @ApiProperty({
+    example: [
+      {
+        id: '68d3eed4afae12a98fb18e2a',
+        name: 'Meril Vitamin C Soap Bar – Tangerine Orange 100gm',
+        expireDate: '2025-09-23T12:00:00.000Z',
+        qty: 5,
+        price: 60,
+      },
+      {
+        id: '68d3eed4afae12a98fb18e2d',
+        name: 'Meril Vitamin C Soap Bar – Lemon & Lime 150gm',
+        expireDate: '2025-09-23T12:00:00.000Z',
+        qty: 5,
+        price: 60,
+      },
+    ],
+  })
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => ExchangeOROrderItem)
+  returnItems: ExchangeOROrderItem[];
+
   @ApiProperty({ example: 250 })
   @IsNumber()
   totalOrderedAmount: number;
@@ -269,6 +334,16 @@ export class CreateExecutionDto {
   @IsOptional()
   @IsEnum(PaymentMethod)
   paymentMethod?: PaymentMethod;
+
+  @ApiProperty({ example: 'remarks for exchange', required: false })
+  @IsOptional()
+  @IsString()
+  remarksForExchange?: string;
+
+  @ApiProperty({ example: 'remarks for return', required: false })
+  @IsOptional()
+  @IsString()
+  remarksForReturn?: string;
 
   @ApiProperty({ example: true, required: false })
   @IsOptional()

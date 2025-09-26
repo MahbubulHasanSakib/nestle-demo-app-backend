@@ -46,6 +46,13 @@ export class ExecutionController {
     return this.executionService.memoByExecution(outletFilterDto, user);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Get('/:id')
+  findById(@Param('id') id: string) {
+    return this.executionService.findById(id);
+  }
+
   @Patch('deliver/:id')
   updateDelivery(@Param('id') id: string) {
     return this.executionService.deliverProduct(id);

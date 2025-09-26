@@ -293,4 +293,12 @@ export class ExecutionService {
       message: 'Sale marked as delivered successfully',
     };
   }
+
+  async findById(id: string) {
+    const execution = await this.executionModel.findById(id);
+    if (!execution) {
+      throw new Error('Execution not found');
+    }
+    return { data: execution };
+  }
 }

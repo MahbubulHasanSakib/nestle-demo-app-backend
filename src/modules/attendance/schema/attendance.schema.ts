@@ -93,6 +93,12 @@ export class Attendance {
   })
   late: boolean;
 
+  @Prop({
+    type: Number,
+    default: null,
+  })
+  handOverAmount: number;
+
   @Prop({ required: false })
   appVersion: string;
 

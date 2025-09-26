@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { MaterialController } from './material.controller';
 import { MaterialService } from './material.service';
 import { MongooseModule } from '@nestjs/mongoose';
-import { MaterialSchema } from './schema/material.schema';
+import { Material, MaterialSchema } from './schema/material.schema';
 import { UserModule } from '../user/user.module';
 import { User, UserSchema } from '../user/schemas/user.schema';
 import { TownModule } from '../data-management/town/town.module';
@@ -23,7 +23,7 @@ import {
     UserModule,
     AttendanceModule,
     MongooseModule.forFeature([
-      { name: 'Material', schema: MaterialSchema },
+      { name: Material.name, schema: MaterialSchema },
       { name: User.name, schema: UserSchema },
       { name: TownMaterial.name, schema: TownMaterialSchema },
       { name: MaterialAssignment.name, schema: MaterialAssignmentSchema },

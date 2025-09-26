@@ -58,6 +58,17 @@ export class MaterialController {
     return this.service.ReceiveTownMaterial(dto, user);
   }
 
+  @ApiOperation({ summary: 'Return/lost/damage material for TMR' })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Post('return')
+  async returnLostAndDamage(
+    @Body() dto: ReturnLostDamageDto,
+    @User() user: IUser,
+  ) {
+    return await this.service.returnMaterialsInTowns(dto, user);
+  }
+
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
   @Get('/material-list')
@@ -70,6 +81,13 @@ export class MaterialController {
   @Get('/town-materials-by-user')
   getTownMaterialsByUser(@User() user: IUser) {
     return this.service.getTownMaterialsByUser(user);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Get('/user-stock')
+  userStock(@User() user: IUser) {
+    return this.service.userStock(user);
   }
 
   @ApiBearerAuth()

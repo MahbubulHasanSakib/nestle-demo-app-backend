@@ -9,7 +9,6 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { ImageObj } from 'src/utils/dto/image.dto';
 
 export class Town {
   @IsNotEmpty()
@@ -67,7 +66,7 @@ class MaterialItem {
   damageQuantity: number;
 }
 
-export class ReturnLostDamage {
+export class ReturnLostDamageDto {
   @ApiProperty({ type: [MaterialItem] })
   @ValidateNested({ each: true, message: 'Validation error' })
   @IsArray({ message: 'Must be array' })
@@ -86,23 +85,11 @@ export class ReturnLostDamage {
   })
   @IsNotEmpty()
   town: Town;
-}
-
-export class ReturnLostDamageDto {
-  @ApiProperty({ type: [ReturnLostDamage] })
-  @ValidateNested({ each: true, message: 'Validation error' })
-  @IsArray({ message: 'Must be array' })
-  @Type(() => ReturnLostDamage)
-  returnItems: ReturnLostDamage[];
 
   @ApiProperty({
-    required: false,
-    example: {
-      imageName: 'name',
-      thumb: 'thumb',
-      original: 'original',
-    },
+    example: 10000,
   })
   @IsOptional()
-  image: ImageObj;
+  @IsNumber()
+  handOverAmount: number;
 }

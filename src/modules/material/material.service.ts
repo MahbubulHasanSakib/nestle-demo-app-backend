@@ -15,10 +15,7 @@ import { ResponseUtils } from 'src/utils/response.utils';
 import { IUser } from '../user/interfaces/user.interface';
 import { User } from '../user/schemas/user.schema';
 import { startAndEndOfDate } from 'src/utils/utils';
-import {
-  ReturnLostDamage,
-  ReturnLostDamageDto,
-} from './dto/return-lost-damage.dto';
+import { ReturnLostDamageDto } from './dto/return-lost-damage.dto';
 import { ImageObj } from 'src/utils/dto/image.dto';
 import { Town } from '../data-management/town/schema/town.schema';
 import * as Excel from '@zlooun/exceljs';
@@ -30,6 +27,7 @@ import * as dayjs from 'dayjs';
 import { TownMaterial } from './schema/town-material.schema';
 import { ReceiveTownMateialDto } from './dto/receive-town-material.dto';
 import { MaterialAssignment } from './schema/material-assignment.schema';
+import { Attendance } from '../attendance/schema/attendance.schema';
 
 @Injectable()
 export class MaterialService {
@@ -41,7 +39,8 @@ export class MaterialService {
     private readonly townMaterialModel: Model<TownMaterial>,
     @InjectModel(MaterialAssignment.name)
     private readonly materialAssignmentModel: Model<MaterialAssignment>,
-    private attendanceService: AttendanceService,
+    @InjectModel(Attendance.name)
+    private readonly attendanceModel: Model<Attendance>,
   ) {}
 
   private readonly materialRepository = new MaterialRepository(
@@ -174,11 +173,36 @@ export class MaterialService {
   }
 
   async getTownMaterialsByUser(user: IUser) {
-    const townMaterial = await this.townMaterialModel.find({
-      'town.id': { $in: user.town },
+    const townMaterials = await this.townMaterialModel
+      .find({
+        'town.id': { $in: user.town },
+      })
+      .lean();
+
+    const materialsWithPrices = await this.MaterialModel.find({})
+      .select('_id price')
+      .lean();
+
+    const materialPriceMap = new Map(
+      materialsWithPrices.map((mat) => [mat._id.toString(), mat.price]),
+    );
+
+    const result = townMaterials.map((twn) => {
+      const materialsWithPrices = twn.material.map((mat) => {
+        const unitPrice = materialPriceMap.get(mat.id.toString());
+        return {
+          ...mat,
+          unitPrice: unitPrice !== undefined ? unitPrice : null,
+        };
+      });
+      return {
+        ...twn,
+        material: materialsWithPrices,
+      };
     });
+
     return {
-      data: townMaterial,
+      data: result,
     };
   }
 
@@ -205,6 +229,17 @@ export class MaterialService {
         throw new NotFoundException(
           `Stock document not found for town ID: ${town.id}`,
         );
+      }
+
+      for (const materialItem of material) {
+        const stockMaterial = townStock.material.find(
+          (m) => m.id.toString() === materialItem.id.toString(),
+        );
+        if (!stockMaterial || stockMaterial.remaining < materialItem.qty) {
+          throw new BadRequestException(
+            `Insufficient stock for material: ${materialItem.name}.`,
+          );
+        }
       }
 
       const bulkOperationsTown = material.map((materialItem) => {
@@ -325,5 +360,141 @@ export class MaterialService {
       // End the session
       await session.endSession();
     }
+  }
+
+  async returnMaterialsInTowns(dto: ReturnLostDamageDto, user: IUser) {
+    const { startOfToday, endOfToday } = startAndEndOfDate();
+    let attendance = await this.attendanceModel.findOne({
+      'user.id': user._id,
+      punchInAt: {
+        $gte: startOfToday,
+        $lte: endOfToday,
+      },
+    });
+
+    if (!attendance)
+      throw new BadRequestException('Please submit your attendance first');
+
+    const session = await this.materialAssignmentModel.db.startSession();
+    session.startTransaction();
+
+    try {
+      const { items, town, handOverAmount } = dto;
+
+      const userMaterialDocument = await this.materialAssignmentModel
+        .findOne({
+          'user.id': user._id,
+          'town.id': new Types.ObjectId(town.id),
+        })
+        .session(session)
+        .lean();
+
+      if (!userMaterialDocument) {
+        throw new NotFoundException(
+          'User has no material assigned to this town.',
+        );
+      }
+
+      // First, validate all material quantities before performing any updates
+      for (const item of items) {
+        const material = userMaterialDocument.material.find(
+          (m) => m.id.toString() === item.id.toString(),
+        );
+
+        if (!material) {
+          throw new BadRequestException(
+            `Material with id ${item.id} is not assigned to the user.`,
+          );
+        }
+
+        const totalToDeduct =
+          (item.returnQuantity || 0) +
+          (item.damageQuantity || 0) +
+          (item.lostQuantity || 0);
+        if (totalToDeduct > material.remaining) {
+          throw new BadRequestException(
+            `Cannot return more of material ${item.name} than you have.`,
+          );
+        }
+      }
+
+      const bulkOperationsUser = items
+        .map((item) => {
+          const totalToDeduct =
+            (item.returnQuantity || 0) +
+            (item.damageQuantity || 0) +
+            (item.lostQuantity || 0);
+
+          if (totalToDeduct > 0) {
+            return {
+              updateOne: {
+                filter: {
+                  _id: userMaterialDocument._id,
+                  'material.id': new Types.ObjectId(item.id),
+                },
+                update: {
+                  $inc: { 'material.$.remaining': -totalToDeduct },
+                },
+              },
+            };
+          }
+        })
+        .filter(Boolean) as any; // Filter out null/undefined and cast to any
+
+      // Deduct materials from the user's stock
+      if (bulkOperationsUser.length > 0) {
+        await this.materialAssignmentModel.bulkWrite(bulkOperationsUser, {
+          session,
+        });
+      }
+
+      const bulkOperationsTown = items
+        .filter((item) => (item.returnQuantity || 0) > 0)
+        .map((item) => ({
+          updateOne: {
+            filter: {
+              'town.id': new Types.ObjectId(town.id),
+              'material.id': new Types.ObjectId(item.id),
+            },
+            update: {
+              $inc: { 'material.$.remaining': item.returnQuantity },
+            },
+          },
+        })) as any;
+
+      // Return materials to the town's stock
+      if (bulkOperationsTown.length > 0) {
+        await this.townMaterialModel.bulkWrite(bulkOperationsTown, { session });
+      }
+
+      if (handOverAmount >= 0) {
+        attendance.handOverAmount = handOverAmount;
+        await attendance.save({ session });
+      }
+
+      await session.commitTransaction();
+
+      return {
+        message: 'Materials returned to town successfully.',
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw new BadRequestException(
+        'Transaction failed to complete.',
+        error.message,
+      );
+    } finally {
+      session.endSession();
+    }
+  }
+
+  async userStock(user: IUser) {
+    let stock = await this.materialAssignmentModel.find({
+      'user.id': user._id,
+      deletedAt: null,
+    });
+    return {
+      data: stock,
+    };
   }
 }

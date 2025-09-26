@@ -39,6 +39,9 @@ export class Material {
   @Prop({ required: true })
   price: number;
 
+  @Prop({ required: false })
+  batch: number;
+
   @Prop({ type: ImageSchema })
   image: Image;
 }

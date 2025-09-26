@@ -182,20 +182,31 @@ export class MaterialService {
       })
       .lean();
 
-    const materialsWithPrices = await this.MaterialModel.find({})
-      .select('_id price')
+    const materialsData = await this.MaterialModel.find({})
+      .select('_id price image batch size category')
       .lean();
 
-    const materialPriceMap = new Map(
-      materialsWithPrices.map((mat) => [mat._id.toString(), mat.price]),
+    const materialMap = new Map(
+      materialsData.map((mat) => [
+        mat._id.toString(),
+        {
+          price: mat.price,
+          image: mat.image,
+          batch: mat.batch,
+          size: mat.size,
+        },
+      ]),
     );
 
     const result = townMaterials.map((twn) => {
       const materialsWithPrices = twn.material.map((mat) => {
-        const unitPrice = materialPriceMap.get(mat.id.toString());
+        const uniqueItem = materialMap.get(mat.id.toString());
         return {
           ...mat,
-          unitPrice: unitPrice !== undefined ? unitPrice : null,
+          unitPrice: uniqueItem !== undefined ? uniqueItem.price : null,
+          image: uniqueItem !== undefined ? uniqueItem.image : null,
+          batch: uniqueItem !== undefined ? uniqueItem.batch : null,
+          size: uniqueItem !== undefined ? uniqueItem.size : null,
         };
       });
       return {
@@ -537,13 +548,49 @@ export class MaterialService {
     ]);
     totalHandOverNeed = totalHandOverNeed[0] ? totalHandOverNeed[0].total : 0;
 
-    let stock = await this.materialAssignmentModel.find({
-      'user.id': user._id,
-      deletedAt: null,
+    let stock = await this.materialAssignmentModel
+      .find({
+        'user.id': user._id,
+        deletedAt: null,
+      })
+      .lean();
+
+    const materialsData = await this.MaterialModel.find({})
+      .select('_id price image batch size category')
+      .lean();
+
+    const materialMap = new Map(
+      materialsData.map((mat) => [
+        mat._id.toString(),
+        {
+          price: mat.price,
+          image: mat.image,
+          batch: mat.batch,
+          size: mat.size,
+        },
+      ]),
+    );
+
+    const result = stock.map((stk) => {
+      const materialsWithImages = stk.material.map((mat) => {
+        const uniqueItem = materialMap.get(mat.id.toString());
+        return {
+          ...mat,
+          unitPrice: uniqueItem !== undefined ? uniqueItem.price : null,
+          image: uniqueItem !== undefined ? uniqueItem.image : null,
+          batch: uniqueItem !== undefined ? uniqueItem.batch : null,
+          size: uniqueItem !== undefined ? uniqueItem.size : null,
+        };
+      });
+      return {
+        ...stk,
+        material: materialsWithImages,
+      };
     });
+
     return {
       data: {
-        stock,
+        stock: result,
         handOverAmount: totalHandOverNeed,
       },
     };

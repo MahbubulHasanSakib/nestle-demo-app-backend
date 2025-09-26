@@ -14,6 +14,10 @@ import { OutletModule } from '../outlet/outlet.module';
 import { AuthModule } from '../auth/auth.module';
 import { Material, MaterialSchema } from '../material/schema/material.schema';
 import { AiReportModule } from '../ai-report/ai-report.module';
+import {
+  MaterialAssignment,
+  MaterialAssignmentSchema,
+} from '../material/schema/material-assignment.schema';
 @Module({
   imports: [
     AuthModule,
@@ -30,6 +34,10 @@ import { AiReportModule } from '../ai-report/ai-report.module';
       {
         name: Material.name,
         schema: MaterialSchema,
+      },
+      {
+        name: MaterialAssignment.name,
+        schema: MaterialAssignmentSchema,
       },
     ]),
   ],

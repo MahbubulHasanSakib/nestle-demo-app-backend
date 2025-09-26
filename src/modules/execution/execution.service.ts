@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Execution } from './schema/execution.schema';
 import { CreateExecutionDto } from './dto/create-execution.dto';
 import mongoose, { Model, PipelineStage, Types } from 'mongoose';
@@ -17,6 +21,7 @@ import { ExecutionProcessor } from '../ai-report/processor/execution.processor';
 import { FindSalesReportDto } from './dto/find-sales-report.dto';
 import { startAndEndOfDate } from 'src/utils/utils';
 import { OutletFilterDto } from '../outlet/dto/outlet-filter.dto';
+import { MaterialAssignment } from '../material/schema/material-assignment.schema';
 
 @Injectable()
 export class ExecutionService {
@@ -31,10 +36,13 @@ export class ExecutionService {
     private readonly outletModel: Model<Outlet>,
     @InjectModel(Material.name)
     private readonly materialModel: Model<Material>,
+    @InjectModel(MaterialAssignment.name)
+    private readonly materialAssignmentModel: Model<MaterialAssignment>,
     @InjectQueue('execution-image') private executionImageQueue: Queue,
     private readonly executionProcessor: ExecutionProcessor,
   ) {}
   async create(CreateExecutionDto: CreateExecutionDto, user: IUser) {
+    const { orderItems, town } = CreateExecutionDto;
     //console.log(JSON.stringify(CreateExecutionDto, null, 4));
     const { outlet, ...rest } = CreateExecutionDto;
     const userInfo = {
@@ -52,26 +60,110 @@ export class ExecutionService {
       rest.withinRadius = rest.distance <= 50;
     }
 
-    const execution: any = await this.executionModel.create({
-      user: userInfo,
-      outlet,
-      ...rest,
-    });
-    await execution.save();
-    await this.outletModel.updateOne(
-      { _id: outlet.id },
-      {
-        $set: {
-          lastVisitedAt: execution.createdAt,
-          lastOrderAmount: execution.totalOrderedAmount,
-          lastOrderDelivered: false,
-          lastOrderId: execution._id,
+    // Start Mongoose Transaction
+    const session = await this.executionModel.db.startSession();
+    session.startTransaction();
+
+    try {
+      // 1. CREATE EXECUTION DOCUMENT (Part of transaction)
+      const execution: any = await this.executionModel.create(
+        [
+          {
+            user: userInfo,
+            outlet,
+            ...rest,
+          },
+        ],
+        { session },
+      );
+
+      // We use execution[0] since .create() returns an array when session is used
+      const createdExecution = execution[0];
+
+      // 2. USER MATERIAL STOCK ADJUSTMENT (Part of transaction)
+      if (orderItems && orderItems.length > 0) {
+        // 2a. Fetch the user's material stock document for validation
+        const userStock: any = await this.materialAssignmentModel
+          .findOne(
+            {
+              'user.id': user._id,
+              'town.id': new Types.ObjectId(town.id),
+            },
+            { material: 1 }, // Select only the material array
+            { session },
+          )
+          .lean();
+
+        if (!userStock) {
+          throw new NotFoundException(
+            `Stock record not found for user ${user._id} in town ${town.id}. Transaction aborted.`,
+          );
+        }
+
+        for (const item of orderItems) {
+          const stockItem = userStock.material.find(
+            (m) => m.id.toString() === item.id.toString(),
+          );
+          const requiredQty = item.qty;
+
+          if (!stockItem || stockItem.remaining < requiredQty) {
+            throw new BadRequestException(
+              `Insufficient stock for item: ${item.name}. Required: ${requiredQty}, Available: ${stockItem ? stockItem.remaining : 0}.`,
+            );
+          }
+        }
+
+        // 2c. Prepare bulkWrite operations to deduct stock
+        const bulkOperations = orderItems.map((item) => {
+          return {
+            updateOne: {
+              filter: {
+                _id: userStock._id,
+                'material.id': new Types.ObjectId(item.id),
+              },
+              update: {
+                // Use $inc to decrement the 'remaining' field
+                $inc: { 'material.$.remaining': -item.qty },
+              },
+            },
+          };
+        });
+
+        // 2d. Execute the bulk stock deduction
+        await this.materialAssignmentModel.bulkWrite(bulkOperations, {
+          session,
+        });
+      }
+
+      // 3. UPDATE OUTLET LAST VISIT INFO (Part of transaction)
+      await this.outletModel.updateOne(
+        { _id: outlet.id },
+        {
+          $set: {
+            lastVisitedAt: createdExecution.createdAt,
+            lastOrderAmount: createdExecution.totalOrderedAmount,
+            lastOrderDelivered: false,
+            lastOrderId: createdExecution._id,
+          },
         },
-      },
-    );
-    return {
-      data: execution,
-    };
+        { session }, // Pass session to the update
+      );
+
+      // 4. COMMIT TRANSACTION
+      await session.commitTransaction();
+
+      return {
+        data: createdExecution,
+        message: 'Execution created and stock deducted successfully.',
+      };
+    } catch (error) {
+      // 5. ABORT TRANSACTION on error
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      // 6. END SESSION
+      await session.endSession();
+    }
   }
 
   async findSalesReport(query: FindSalesReportDto) {

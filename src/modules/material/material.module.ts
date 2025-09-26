@@ -8,6 +8,14 @@ import { User, UserSchema } from '../user/schemas/user.schema';
 import { TownModule } from '../data-management/town/town.module';
 import { AuthModule } from '../auth/auth.module';
 import { AttendanceModule } from '../attendance/attendance.module';
+import {
+  TownMaterial,
+  TownMaterialSchema,
+} from './schema/town-material.schema';
+import {
+  MaterialAssignment,
+  MaterialAssignmentSchema,
+} from './schema/material-assignment.schema';
 @Module({
   imports: [
     AuthModule,
@@ -17,6 +25,8 @@ import { AttendanceModule } from '../attendance/attendance.module';
     MongooseModule.forFeature([
       { name: 'Material', schema: MaterialSchema },
       { name: User.name, schema: UserSchema },
+      { name: TownMaterial.name, schema: TownMaterialSchema },
+      { name: MaterialAssignment.name, schema: MaterialAssignmentSchema },
     ]),
   ],
   controllers: [MaterialController],

@@ -27,6 +27,9 @@ import { UserType } from '../user/interfaces/user.type';
 import { TownMaterialAllocationDto } from './dto/town-material-allocation.dto';
 import { AttendanceService } from '../attendance/attendance.service';
 import * as dayjs from 'dayjs';
+import { TownMaterial } from './schema/town-material.schema';
+import { ReceiveTownMateialDto } from './dto/receive-town-material.dto';
+import { MaterialAssignment } from './schema/material-assignment.schema';
 
 @Injectable()
 export class MaterialService {
@@ -34,6 +37,10 @@ export class MaterialService {
     @InjectModel('Town') private readonly townModel: Model<Town>,
     @InjectModel('Material') private readonly MaterialModel: Model<Material>,
     @InjectModel(User.name) private readonly userModel: Model<User>,
+    @InjectModel(TownMaterial.name)
+    private readonly townMaterialModel: Model<TownMaterial>,
+    @InjectModel(MaterialAssignment.name)
+    private readonly materialAssignmentModel: Model<MaterialAssignment>,
     private attendanceService: AttendanceService,
   ) {}
 
@@ -164,5 +171,159 @@ export class MaterialService {
       },
     ]);
     return { data: materials, message: 'Material List found successfully' };
+  }
+
+  async getTownMaterialsByUser(user: IUser) {
+    const townMaterial = await this.townMaterialModel.find({
+      'town.id': { $in: user.town },
+    });
+    return {
+      data: townMaterial,
+    };
+  }
+
+  async ReceiveTownMaterial(dto: ReceiveTownMateialDto, user: IUser) {
+    const { town, material } = dto;
+    const userId = user._id;
+    const townId = town.id;
+
+    if (material.length === 0) {
+      return { message: 'No materials provided for receiving.' };
+    }
+
+    const session = await this.townMaterialModel.db.startSession();
+    session.startTransaction();
+
+    try {
+      // Step 1: Deduct material from the town's stock
+      const townStock = await this.townMaterialModel
+        .findOne({ 'town.id': new Types.ObjectId(town.id) }, null, { session })
+        .select('_id')
+        .lean();
+
+      if (!townStock) {
+        throw new NotFoundException(
+          `Stock document not found for town ID: ${town.id}`,
+        );
+      }
+
+      const bulkOperationsTown = material.map((materialItem) => {
+        return {
+          updateOne: {
+            filter: {
+              _id: townStock._id,
+              'material.id': new Types.ObjectId(materialItem.id),
+            },
+            update: {
+              $inc: { 'material.$.remaining': -materialItem.qty },
+            },
+          },
+        };
+      });
+
+      const townResult = await this.townMaterialModel.bulkWrite(
+        bulkOperationsTown,
+        { session },
+      );
+
+      // Step 2: Update or create the user's material document
+      const userMaterialDocument =
+        await this.materialAssignmentModel.findOneAndUpdate(
+          {
+            'user.id': new Types.ObjectId(userId),
+            'town.id': new Types.ObjectId(townId),
+          },
+          {
+            $setOnInsert: {
+              user: {
+                id: user._id,
+                name: user.name,
+                usercode: user.usercode,
+                type: user.kind,
+              },
+              town: {
+                id: new Types.ObjectId(town.id),
+                name: town.name,
+                towncode: town.towncode,
+                territory: town.territory,
+                territoryId: new Types.ObjectId(town.territoryId),
+                area: town.area,
+                areaId: new Types.ObjectId(town.areaId),
+                region: town.region,
+                regionId: new Types.ObjectId(town.regionId),
+              },
+              material: [],
+            },
+          },
+          { upsert: true, new: true, lean: true, session },
+        );
+
+      const bulkOperationsUser = material.map((materialItem) => {
+        const existingMaterial = userMaterialDocument.material.find(
+          (m) => m.id.toString() === materialItem.id.toString(),
+        );
+
+        if (existingMaterial) {
+          return {
+            updateOne: {
+              filter: {
+                _id: userMaterialDocument._id,
+                'material.id': new Types.ObjectId(materialItem.id),
+              },
+              update: {
+                $inc: { 'material.$.remaining': materialItem.qty },
+              },
+            },
+          };
+        } else {
+          return {
+            updateOne: {
+              filter: { _id: userMaterialDocument._id },
+              update: {
+                $push: {
+                  material: {
+                    id: new Types.ObjectId(materialItem.id),
+                    name: materialItem.name,
+                    company: materialItem.company,
+                    category: materialItem.category,
+                    remaining: materialItem.qty,
+                    pending: 0,
+                  },
+                },
+              },
+            },
+          };
+        }
+      }) as any;
+
+      const userResult = await this.materialAssignmentModel.bulkWrite(
+        bulkOperationsUser,
+        { session },
+      );
+
+      // If all operations were successful, commit the transaction
+      await session.commitTransaction();
+
+      return {
+        message: 'Material received and updated in user stock.',
+        data: {
+          townModifiedCount: townResult.modifiedCount,
+          userModifiedCount:
+            userResult.modifiedCount +
+            userResult.upsertedCount +
+            userResult.matchedCount,
+        },
+      };
+    } catch (error) {
+      // If any operation fails, abort the transaction
+      await session.abortTransaction();
+      throw new BadRequestException(
+        'Transaction failed due to an error.',
+        error.message,
+      );
+    } finally {
+      // End the session
+      await session.endSession();
+    }
   }
 }

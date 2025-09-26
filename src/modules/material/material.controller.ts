@@ -37,6 +37,7 @@ import { TownMaterialAllocationDto } from './dto/town-material-allocation.dto';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { Permissions } from '../auth/permissions.decorator';
 import { PermissionType } from '../auth/interface/permission.type';
+import { ReceiveTownMateialDto } from './dto/receive-town-material.dto';
 
 @ApiTags('material')
 @UseInterceptors(ResponseInterceptor)
@@ -52,9 +53,23 @@ export class MaterialController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
+  @Post('receive-town-material')
+  ReceiveTownMaterial(@Body() dto: ReceiveTownMateialDto, @User() user: IUser) {
+    return this.service.ReceiveTownMaterial(dto, user);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
   @Get('/material-list')
   async materialsList() {
     return this.service.materialsList();
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Get('/town-materials-by-user')
+  getTownMaterialsByUser(@User() user: IUser) {
+    return this.service.getTownMaterialsByUser(user);
   }
 
   @ApiBearerAuth()

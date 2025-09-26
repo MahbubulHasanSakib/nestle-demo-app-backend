@@ -531,7 +531,7 @@ export class MaterialService {
       };
     }
 
-    let totalHandOverNeed = await this.executionModel.aggregate([
+    let saleData = await this.executionModel.aggregate([
       {
         $match: {
           'town.id': { $in: user.town },
@@ -540,13 +540,74 @@ export class MaterialService {
         },
       },
       {
-        $group: {
-          _id: null,
-          total: { $sum: '$totalOrderedAmount' },
+        $facet: {
+          totalOrderedAmount: [
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$totalOrderedAmount' },
+              },
+            },
+          ],
+          exchangeItems: [
+            {
+              $unwind: '$exchangeItems',
+            },
+            {
+              $group: {
+                _id: {
+                  townId: '$town.id',
+                  itemId: '$exchangeItems.id',
+                  itemName: '$exchangeItems.name',
+                },
+                total: { $sum: 1 },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                townId: '$_id.townId',
+                itemId: '$_id.itemId',
+                itemName: '$_id.itemName',
+                total: 1,
+              },
+            },
+          ],
+          returnItems: [
+            {
+              $unwind: '$returnItems',
+            },
+            {
+              $group: {
+                _id: {
+                  itemId: '$returnItems.id',
+                  itemName: '$returnItems.name',
+                },
+                total: { $sum: 1 },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                itemName: '$_id.itemName',
+                quantity: '$total',
+              },
+            },
+          ],
         },
       },
     ]);
-    totalHandOverNeed = totalHandOverNeed[0] ? totalHandOverNeed[0].total : 0;
+    const [aggregatedResults] = saleData;
+    let totalOrderedAmount = 0;
+    let exchangeItems = [];
+    let returnItems = [];
+
+    if (aggregatedResults) {
+      totalOrderedAmount =
+        aggregatedResults?.totalOrderedAmount?.[0]?.total || 0;
+      exchangeItems = aggregatedResults?.exchangeItems || [];
+      returnItems = aggregatedResults?.returnItems || [];
+    }
 
     let stock = await this.materialAssignmentModel
       .find({
@@ -574,12 +635,18 @@ export class MaterialService {
     const result = stock.map((stk) => {
       const materialsWithImages = stk.material.map((mat) => {
         const uniqueItem = materialMap.get(mat.id.toString());
+        const exchangeItem = exchangeItems?.find(
+          (e) =>
+            e.townId.toString() === stk.town.id.toString() &&
+            e.itemId.toString() === mat.id.toString(),
+        );
         return {
           ...mat,
           unitPrice: uniqueItem !== undefined ? uniqueItem.price : null,
           image: uniqueItem !== undefined ? uniqueItem.image : null,
           batch: uniqueItem !== undefined ? uniqueItem.batch : null,
           size: uniqueItem !== undefined ? uniqueItem.size : null,
+          exchangeQty: exchangeItem ? exchangeItem.total : 0,
         };
       });
       return {
@@ -591,7 +658,8 @@ export class MaterialService {
     return {
       data: {
         stock: result,
-        handOverAmount: totalHandOverNeed,
+        returnItems,
+        handOverAmount: totalOrderedAmount,
       },
     };
   }

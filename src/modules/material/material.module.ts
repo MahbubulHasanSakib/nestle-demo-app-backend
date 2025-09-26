@@ -16,12 +16,14 @@ import {
   MaterialAssignment,
   MaterialAssignmentSchema,
 } from './schema/material-assignment.schema';
+import { ExecutionModule } from '../execution/execution.module';
 @Module({
   imports: [
     AuthModule,
     TownModule,
     UserModule,
     AttendanceModule,
+    ExecutionModule,
     MongooseModule.forFeature([
       { name: Material.name, schema: MaterialSchema },
       { name: User.name, schema: UserSchema },

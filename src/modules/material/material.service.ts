@@ -28,6 +28,7 @@ import { TownMaterial } from './schema/town-material.schema';
 import { ReceiveTownMateialDto } from './dto/receive-town-material.dto';
 import { MaterialAssignment } from './schema/material-assignment.schema';
 import { Attendance } from '../attendance/schema/attendance.schema';
+import { Execution } from '../execution/schema/execution.schema';
 
 @Injectable()
 export class MaterialService {
@@ -41,6 +42,8 @@ export class MaterialService {
     private readonly materialAssignmentModel: Model<MaterialAssignment>,
     @InjectModel(Attendance.name)
     private readonly attendanceModel: Model<Attendance>,
+    @InjectModel(Execution.name)
+    private readonly executionModel: Model<Execution>,
   ) {}
 
   private readonly materialRepository = new MaterialRepository(
@@ -489,12 +492,60 @@ export class MaterialService {
   }
 
   async userStock(user: IUser) {
+    let { startOfToday, endOfToday } = startAndEndOfDate();
+    let lastHandOverDate = await this.attendanceModel
+      .findOne({
+        'user.id': user._id,
+        handOverAmount: { $exists: true },
+      })
+      .sort({ punchInAt: -1 })
+      .select('punchInAt');
+
+    let filterDate = {};
+    if (lastHandOverDate) {
+      let { startOfToday, endOfToday: dayEnd } = startAndEndOfDate(
+        lastHandOverDate.punchInAt,
+      );
+      filterDate = {
+        executionEndAt: {
+          $gt: dayEnd,
+          $lte: endOfToday,
+        },
+      };
+    } else {
+      filterDate = {
+        executionEndAt: {
+          $lte: endOfToday,
+        },
+      };
+    }
+
+    let totalHandOverNeed = await this.executionModel.aggregate([
+      {
+        $match: {
+          'town.id': { $in: user.town },
+          'user.id': user._id,
+          ...filterDate,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$totalOrderedAmount' },
+        },
+      },
+    ]);
+    totalHandOverNeed = totalHandOverNeed[0] ? totalHandOverNeed[0].total : 0;
+
     let stock = await this.materialAssignmentModel.find({
       'user.id': user._id,
       deletedAt: null,
     });
     return {
-      data: stock,
+      data: {
+        stock,
+        handOverAmount: totalHandOverNeed,
+      },
     };
   }
 }

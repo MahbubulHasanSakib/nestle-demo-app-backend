@@ -251,6 +251,7 @@ export class ExecutionService {
           $match: {
             deletedAt: null,
             'town.id': new Types.ObjectId(dto.townId),
+            'user.id': user._id,
             'outlet.route': dto.route,
             ...outletFilter,
           },

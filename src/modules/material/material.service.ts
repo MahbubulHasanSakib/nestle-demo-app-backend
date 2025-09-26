@@ -236,7 +236,7 @@ export class MaterialService {
       // Step 1: Deduct material from the town's stock
       const townStock = await this.townMaterialModel
         .findOne({ 'town.id': new Types.ObjectId(town.id) }, null, { session })
-        .select('_id')
+        .select('_id material')
         .lean();
 
       if (!townStock) {
@@ -246,6 +246,7 @@ export class MaterialService {
       }
 
       for (const materialItem of material) {
+        console.log(townStock);
         const stockMaterial = townStock.material.find(
           (m) => m.id.toString() === materialItem.id.toString(),
         );
@@ -364,6 +365,7 @@ export class MaterialService {
         },
       };
     } catch (error) {
+      console.log(error);
       // If any operation fails, abort the transaction
       await session.abortTransaction();
       throw new BadRequestException(

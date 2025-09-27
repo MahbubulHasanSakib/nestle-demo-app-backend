@@ -375,12 +375,24 @@ export class ExecutionService {
     if (!execution) {
       throw new Error('Execution not found');
     }
-    const updateExecution = await this.executionModel.findByIdAndUpdate(id, {
-      $set: { delivered: true },
-    });
+
+    const updateExecution = await this.executionModel.findByIdAndUpdate(
+      id,
+      { $set: { delivered: true } },
+      { new: true },
+    );
     if (!updateExecution) {
       throw new Error('Error occurred while updating execution for delivery');
     }
+
+    // Optimized & concurrency-safe
+    await this.outletModel.findOneAndUpdate(
+      {
+        _id: updateExecution.outlet.id,
+        lastOrderId: execution._id, // condition to avoid race issues
+      },
+      { $set: { lastOrderDelivered: true } },
+    );
     return {
       data: updateExecution,
       message: 'Sale marked as delivered successfully',

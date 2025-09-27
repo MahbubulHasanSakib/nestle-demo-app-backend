@@ -209,7 +209,7 @@ export class OutletService {
           $addFields: {
             aiResult: [
               {
-                name: 'Meril Vitamin C Soap Bar - Tangerine Orange',
+                name: 'Meril Vitamin C Soap Bar – Tangerine Orange',
                 detectedQty: 43,
               },
               {
@@ -221,7 +221,7 @@ export class OutletService {
                 detectedQty: 32,
               },
               {
-                name: 'Meril Vitamin C Soap Bar - Lemon & Lime',
+                name: 'Meril Vitamin C Soap Bar – Lemon & Lime',
                 detectedQty: 48,
               },
               {

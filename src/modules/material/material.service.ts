@@ -571,7 +571,7 @@ export class MaterialService {
                 townId: '$_id.townId',
                 itemId: '$_id.itemId',
                 itemName: '$_id.itemName',
-                total: 1,
+                quantity: '$total',
               },
             },
           ],
@@ -591,6 +591,7 @@ export class MaterialService {
             {
               $project: {
                 _id: 0,
+                itemId: '$_id.itemId',
                 itemName: '$_id.itemName',
                 quantity: '$total',
               },
@@ -648,7 +649,7 @@ export class MaterialService {
           image: uniqueItem !== undefined ? uniqueItem.image : null,
           batch: uniqueItem !== undefined ? uniqueItem.batch : null,
           size: uniqueItem !== undefined ? uniqueItem.size : null,
-          exchangeQty: exchangeItem ? exchangeItem.total : 0,
+          exchangeQty: exchangeItem ? exchangeItem.quantity : 0,
         };
       });
       return {

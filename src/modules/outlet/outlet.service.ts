@@ -239,6 +239,7 @@ export class OutletService {
           $project: {
             name: 1,
             town: 1,
+            route: 1,
             channel: 1,
             outletcode: 1,
             contact: '$contactNo',

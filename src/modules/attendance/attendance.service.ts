@@ -227,7 +227,7 @@ export class AttendanceService {
 
   async attendanceTracker(
     query: GetAttendanceTrackerDto,
-    user: { msId: ObjectId[]; townsId: ObjectId[]; projectAccess: string[] },
+    /*user: { msId: ObjectId[]; townsId: ObjectId[]; projectAccess: string[] },*/
   ) {
     //console.log({ user });
     const { startOfToday, endOfToday } = startAndEndOfDate(new Date());
@@ -250,10 +250,10 @@ export class AttendanceService {
     let filterUserForMs: any = {};
     let projectAccessQuery: any = {};
     let projectAccessQueryForUser: any = {};
-    if (user?.projectAccess?.length > 0) {
+    /*if (user?.projectAccess?.length > 0) {
       projectAccessQuery['user.kind'] = user?.projectAccess[0];
       projectAccessQueryForUser['kind'] = user?.projectAccess[0];
-    }
+    }*/
     let dayQuery: any = {
       punchInAt: { $gte: startOfToday, $lte: endOfToday },
     };
@@ -263,15 +263,15 @@ export class AttendanceService {
     };
     let townQuery: any = {};
 
-    if (user?.townsId?.length > 0) {
+    /*if (user?.townsId?.length > 0) {
       townQuery = {
         ...townQuery,
         _id: {
           $in: user.townsId.map((v) => new Types.ObjectId(v)),
         },
       };
-    }
-    if (user?.msId?.length > 0) {
+    }*/
+    /*if (user?.msId?.length > 0) {
       filterAttendanceForMs['$or'] = [
         { 'user.supervisor': { $in: user.msId } },
         { 'user._id': { $in: user.msId } },
@@ -280,7 +280,7 @@ export class AttendanceService {
         { supervisor: { $in: user.msId } },
         { _id: { $in: user.msId } },
       ];
-    }
+    }*/
     if (townId && townId.length) {
       townQuery = {
         ...townQuery,
@@ -682,7 +682,7 @@ export class AttendanceService {
 
   async attendanceTrackerV2(
     query: GetAttendanceTrackerDto,
-    user: { msId: ObjectId[]; townsId: ObjectId[]; projectAccess: string[] },
+    /*user: { msId: ObjectId[]; townsId: ObjectId[]; projectAccess: string[] },*/
   ) {
     //console.log({ user });
     const { startOfToday, endOfToday } = startAndEndOfDate(new Date());
@@ -709,10 +709,10 @@ export class AttendanceService {
 
     const absentUserQuery: any = {};
 
-    if (user?.projectAccess?.length > 0) {
+    /*if (user?.projectAccess?.length > 0) {
       projectAccessQuery['user.kind'] = user?.projectAccess[0];
       projectAccessQueryForUser['kind'] = user?.projectAccess[0];
-    }
+    }*/
     let dayQuery: any = {
       punchInAt: { $gte: startOfToday, $lte: endOfToday },
     };
@@ -722,15 +722,15 @@ export class AttendanceService {
     };
     let townQuery: any = {};
 
-    if (user?.townsId?.length > 0) {
+    /*if (user?.townsId?.length > 0) {
       townQuery = {
         ...townQuery,
         _id: {
           $in: user.townsId.map((v) => new Types.ObjectId(v)),
         },
       };
-    }
-    if (user?.msId?.length > 0) {
+    }*/
+    /*if (user?.msId?.length > 0) {
       filterAttendanceForMs['$or'] = [
         { 'user.supervisor': { $in: user.msId } },
         { 'user._id': { $in: user.msId } },
@@ -739,7 +739,7 @@ export class AttendanceService {
         { supervisor: { $in: user.msId } },
         { _id: { $in: user.msId } },
       ];
-    }
+    }*/
     if (townId && townId.length) {
       townQuery = {
         ...townQuery,

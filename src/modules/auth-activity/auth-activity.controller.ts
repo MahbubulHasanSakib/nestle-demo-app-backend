@@ -28,8 +28,8 @@ export class AuthActivityController {
   }
 
   @ApiBearerAuth()
-  @Permissions(PermissionType.LOGIN_DETAILS)
-  @UseGuards(AuthGuard, PermissionsGuard)
+  /*@Permissions(PermissionType.LOGIN_DETAILS)*/
+  @UseGuards(AuthGuard /* PermissionsGuard*/)
   @Post('log-report')
   findAll(@Body() body: GetAuthActivities) {
     return this.authActivityService.findAll(body);

@@ -15,8 +15,8 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @ApiBearerAuth()
-  @Permissions(PermissionType.DASHBOARD)
-  @UseGuards(AuthGuard, PermissionsGuard)
+  /*@Permissions(PermissionType.DASHBOARD)*/
+  @UseGuards(AuthGuard /*PermissionsGuard*/)
   @Post('')
   dashboardDetails(@Body() query: DashboardFilter, @User() user: IUser) {
     return this.dashboardService.dashboard(query, {

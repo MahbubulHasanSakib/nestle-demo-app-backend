@@ -64,8 +64,8 @@ export class LeaveController {
   }
 
   @ApiBearerAuth()
-  @Permissions(PermissionType.LEAVE_APPROVAL)
-  @UseGuards(AuthGuard, PermissionsGuard)
+  /*(PermissionType.LEAVE_APPROVAL)*/
+  @UseGuards(AuthGuard /*PermissionsGuard*/)
   @Post('leave-requests')
   async getAllLeaveRequestAsAdmin(@Body() query: GetLeaveRequestsDto) {
     return await this.leaveService.getAllLeaveRequestAsAdmin(query);
@@ -73,8 +73,8 @@ export class LeaveController {
 
   @ApiBearerAuth()
   @Version('2')
-  @Permissions(PermissionType.LEAVE_APPROVAL)
-  @UseGuards(AuthGuard, PermissionsGuard)
+  /*@Permissions(PermissionType.LEAVE_APPROVAL)*/
+  @UseGuards(AuthGuard /* PermissionsGuard*/)
   @Post('leave-requests')
   async getAllLeaveRequestAsAdminV2(
     @Body() query: GetLeaveRequestsDto,

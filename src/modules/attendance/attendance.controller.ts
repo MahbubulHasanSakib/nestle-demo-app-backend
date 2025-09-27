@@ -32,35 +32,39 @@ import { Permissions } from '../auth/permissions.decorator';
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
-  @ApiBearerAuth()
-  @Permissions(PermissionType.ATTENDANCE)
-  @UseGuards(AuthGuard, PermissionsGuard)
+  // @ApiBearerAuth()
+  // /*@Permissions(PermissionType.ATTENDANCE)*/
+  // @UseGuards(AuthGuard /*PermissionsGuard*/)
   @Post('/attendanceTracker')
   attendanceTracker(
     @Body() query: GetAttendanceTrackerDto,
     @User() user: IUser,
   ) {
-    return this.attendanceService.attendanceTracker(query, {
+    return this.attendanceService.attendanceTracker(
+      query /*{
       msId: user.msId,
       townsId: user.townsId,
       projectAccess: user.projectAccess,
-    });
+    }*/,
+    );
   }
 
   @Version('2')
-  @ApiBearerAuth()
-  @Permissions(PermissionType.ATTENDANCE)
-  @UseGuards(AuthGuard, PermissionsGuard)
+  // @ApiBearerAuth()
+  // @Permissions(PermissionType.ATTENDANCE)
+  // @UseGuards(AuthGuard ,PermissionsGuard)
   @Post('/attendanceTracker')
   attendanceTrackerV2(
     @Body() query: GetAttendanceTrackerDto,
     @User() user: IUser,
   ) {
-    return this.attendanceService.attendanceTrackerV2(query, {
+    return this.attendanceService.attendanceTrackerV2(
+      query /*{
       msId: user.msId,
       townsId: user.townsId,
       projectAccess: user.projectAccess,
-    });
+    }*/,
+    );
   }
 
   @ApiBearerAuth()

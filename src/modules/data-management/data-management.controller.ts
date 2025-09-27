@@ -26,8 +26,8 @@ export class DataManagementController {
 
   @Post('all')
   @ApiBearerAuth()
-  @Permissions(PermissionType.DATA_MANAGEMENT)
-  @UseGuards(AuthGuard, PermissionsGuard)
+  /*@Permissions(PermissionType.DATA_MANAGEMENT)*/
+  @UseGuards(AuthGuard /*PermissionsGuard*/)
   @HttpCode(HttpStatus.OK)
   findAll(
     @Body() getDataManagementDto: GetDataManagementDto,

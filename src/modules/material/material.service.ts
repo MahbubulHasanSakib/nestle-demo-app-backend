@@ -509,7 +509,7 @@ export class MaterialService {
     let lastHandOverDate = await this.attendanceModel
       .findOne({
         'user.id': user._id,
-        handOverAmount: { $exists: true },
+        handOverAmount: { $ne: null },
       })
       .sort({ punchInAt: -1 })
       .select('punchInAt');

@@ -114,8 +114,7 @@ export class SummaryService {
       },
       {
         $group: {
-          _id: null,
-          count: { $count: {} },
+          _id: '$outlet.id',
         },
       },
     ]);
@@ -144,7 +143,7 @@ export class SummaryService {
         routes,
         totalSalesToday: totalSalesToday[0]?.totalOrderedAmount || 0,
         todayOutletTarget,
-        todayCoveredOutlet: todayCoveredOutlet[0]?.count || 0,
+        todayCoveredOutlet: todayCoveredOutlet?.length || 0,
         monthlySalesTarget,
         monthlyAchievement: monthlyAchievement[0]?.totalOrderedAmount || 0,
         monthlyAchievementPercent: monthlyAchievement[0]
